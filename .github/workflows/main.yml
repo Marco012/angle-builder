@@ -1,0 +1,44 @@
+name: Build and Release ANGLE
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            triplet: x64-windows
+            name: win-x64
+          - os: windows-latest
+            triplet: arm64-windows
+            name: win-arm64
+          - os: macos-latest
+            triplet: arm64-osx-dynamic
+            name: osx-arm64
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: johnwason/vcpkg-action@v7
+        with:
+          pkgs: angle
+          triplet: ${{ matrix.triplet }}
+          token: ${{ github.token }}
+
+      - name: Prepare Artifacts
+        shell: bash
+        run: |
+          mkdir -p output
+          VCPKG_PATH="vcpkg/installed/${{ matrix.triplet }}"
+          # Grab libs and dlls/dylibs
+          cp $VCPKG_PATH/lib/*.* output/ || true
+          if [ -d "$VCPKG_PATH/bin" ]; then cp $VCPKG_PATH/bin/*.* output/ || true; fi
+
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.0
+          files: output/*
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
