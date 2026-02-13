@@ -41,16 +41,16 @@ jobs:
       - name: Prepare Artifacts
         shell: bash
         run: |
-          # Create a directory named after the target (e.g., win-x64)
+          # Create a directory named after the target
           STAGING="${{ matrix.name }}"
           mkdir -p "$STAGING"
           
           VCPKG_PATH="vcpkg/installed/${{ matrix.triplet }}"
           
-          # Copy Library files (.lib or .a)
+          # Copy Library files
           cp $VCPKG_PATH/lib/*.* "$STAGING/" || true
           
-          # Copy Binary files (.dll or .dylib)
+          # Copy Binary files
           if [ -d "$VCPKG_PATH/bin" ]; then 
             cp $VCPKG_PATH/bin/*.* "$STAGING/" || true
           fi
@@ -61,18 +61,20 @@ jobs:
             cd "$STAGING"
             for f in liblib*_angle.dylib; do
               if [ -f "$f" ]; then
-                # Example: liblibGLESv2_angle.dylib -> libGLESv2.dylib
                 NEW_NAME=$(echo "$f" | sed 's/liblib/lib/' | sed 's/_angle//')
                 mv "$f" "$NEW_NAME"
                 echo "✅ Renamed $f to $NEW_NAME"
               fi
             done
             cd ..
+            # Standard zip works on macOS runners
+            zip -r "${{ matrix.name }}.zip" "$STAGING"
+          else
+            # Windows runners use 7z (7-Zip) which is pre-installed
+            # 'a' means add/archive
+            7z a "${{ matrix.name }}.zip" "$STAGING/"
           fi
-
-          # Zip the folder so it stays grouped by platform
-          zip -r "${{ matrix.name }}.zip" "$STAGING"
-
+          
       # 3. Create/Update Release and Upload Zip
       - name: Upload to Release
         uses: softprops/action-gh-release@v2
