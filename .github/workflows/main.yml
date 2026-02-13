@@ -41,39 +41,35 @@ jobs:
       - name: Prepare Artifacts
         shell: bash
         run: |
-          # Create a directory named after the target
           STAGING="${{ matrix.name }}"
           mkdir -p "$STAGING"
-          
           VCPKG_PATH="vcpkg/installed/${{ matrix.triplet }}"
           
-          # Copy Library files
-          cp $VCPKG_PATH/lib/*.* "$STAGING/" || true
-          
-          # Copy Binary files
-          if [ -d "$VCPKG_PATH/bin" ]; then 
-            cp $VCPKG_PATH/bin/*.* "$STAGING/" || true
-          fi
+          echo "📦 Collecting runtime binaries..."
 
-          # --- MACOS SPECIFIC: CLEANUP FILENAMES ---
-          if [ "${{ matrix.os }}" == "macos-latest" ]; then
-            echo "🔨 Renaming macOS dylibs for easier linking..."
+          if [ "${{ matrix.os }}" == "windows-latest" ]; then
+            # Grab ONLY the DLLs. No .libs, no bloat.
+            cp "$VCPKG_PATH/bin/"*.dll "$STAGING/" || true
+            
+            7z a "${{ matrix.name }}.zip" "$STAGING/"
+
+          elif [ "${{ matrix.os }}" == "macos-latest" ]; then
+            # Mac still uses .dylibs for runtime
+            cp "$VCPKG_PATH/lib/"*.dylib "$STAGING/" || true
+            
             cd "$STAGING"
             for f in liblib*_angle.dylib; do
               if [ -f "$f" ]; then
                 NEW_NAME=$(echo "$f" | sed 's/liblib/lib/' | sed 's/_angle//')
                 mv "$f" "$NEW_NAME"
-                echo "✅ Renamed $f to $NEW_NAME"
               fi
             done
             cd ..
-            # Standard zip works on macOS runners
             zip -r "${{ matrix.name }}.zip" "$STAGING"
-          else
-            # Windows runners use 7z (7-Zip) which is pre-installed
-            # 'a' means add/archive
-            7z a "${{ matrix.name }}.zip" "$STAGING/"
           fi
+
+          echo "✅ Final staging content:"
+          ls -lh "$STAGING"
           
       # 3. Create/Update Release and Upload Zip
       - name: Upload to Release
