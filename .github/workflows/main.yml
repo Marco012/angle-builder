@@ -26,6 +26,9 @@ jobs:
           - os: macos-latest
             triplet: arm64-osx-dynamic
             name: osx-arm64
+          - os: ubuntu-24.04
+            triplet: x64-linux
+            name: linux_x64
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -65,6 +68,10 @@ jobs:
               fi
             done
             cd ..
+            zip -r "${{ matrix.name }}.zip" "$STAGING"
+            
+          elif [[ "${{ matrix.os }}" == ubuntu* ]]; then
+            cp "$VCPKG_PATH/lib/"*.so "$STAGING/" || true
             zip -r "${{ matrix.name }}.zip" "$STAGING"
           fi
 
