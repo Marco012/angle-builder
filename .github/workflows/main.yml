@@ -71,7 +71,12 @@ jobs:
             zip -r "${{ matrix.name }}.zip" "$STAGING"
             
           elif [[ "${{ matrix.os }}" == ubuntu* ]]; then
-            find "$VCPKG_PATH" -type f -name "*.so*" -exec cp {} "$STAGING/" \; || true
+            cp "$VCPKG_PATH/lib/libEGL.so"* "$STAGING/" 2>/dev/null || true
+            cp "$VCPKG_PATH/lib/libGLESv2.so"* "$STAGING/" 2>/dev/null || true
+            cp "$VCPKG_PATH/lib/libangle"*".so"* "$STAGING/" 2>/dev/null || true
+
+            rm -f "$STAGING/"*.a 2>/dev/null || true
+
             zip -r "${{ matrix.name }}.zip" "$STAGING"
           fi
 
