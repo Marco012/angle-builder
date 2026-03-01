@@ -27,7 +27,7 @@ jobs:
             triplet: arm64-osx-dynamic
             name: osx-arm64
           - os: ubuntu-24.04
-            triplet: x64-linux
+            triplet: x64-linux-dynamic
             name: linux-x64
 
     runs-on: ${{ matrix.os }}
@@ -46,20 +46,21 @@ jobs:
         run: |
           STAGING="${{ matrix.name }}"
           mkdir -p "$STAGING"
-          VCPKG_PATH="vcpkg/installed/${{ matrix.triplet }}"
           
-          echo "📦 Collecting runtime binaries..."
+          # Using absolute path to avoid "file not found" issues
+          VCPKG_PATH="${{ github.workspace }}/vcpkg/installed/${{ matrix.triplet }}"
+          
+          echo "📦 Collecting runtime binaries from $VCPKG_PATH"
 
           if [ "${{ matrix.os }}" == "windows-latest" ]; then
-            # Grab ONLY the DLLs. No .libs, no bloat.
-            cp "$VCPKG_PATH/bin/"*.dll "$STAGING/" || true
-            
-            7z a "${{ matrix.name }}.zip" "$STAGING/"
+            # Windows DLLs live in the 'bin' folder
+            cp "$VCPKG_PATH/bin/"*.dll "$STAGING/" || echo "No DLLs found"
+            7z a "${{ matrix.name }.zip" "./$STAGING/*"
 
           elif [ "${{ matrix.os }}" == "macos-latest" ]; then
-            # Mac still uses .dylibs for runtime
-            cp "$VCPKG_PATH/lib/"*.dylib "$STAGING/" || true
+            cp "$VCPKG_PATH/lib/"*.dylib "$STAGING/" || echo "No dylibs found"
             
+            # Your custom renaming logic
             cd "$STAGING"
             for f in liblib*_angle.dylib; do
               if [ -f "$f" ]; then
@@ -71,12 +72,9 @@ jobs:
             zip -r "${{ matrix.name }}.zip" "$STAGING"
             
           elif [[ "${{ matrix.os }}" == ubuntu* ]]; then
-            cp "$VCPKG_PATH/lib/libEGL.so"* "$STAGING/" 2>/dev/null || true
-            cp "$VCPKG_PATH/lib/libGLESv2.so"* "$STAGING/" 2>/dev/null || true
-            cp "$VCPKG_PATH/lib/libangle"*".so"* "$STAGING/" 2>/dev/null || true
-
-            rm -f "$STAGING/"*.a 2>/dev/null || true
-
+            # Linux .so files live in the 'lib' folder
+            # We use the -d flag with cp to preserve symlinks if they exist
+            cp -d "$VCPKG_PATH/lib/"*.so* "$STAGING/" 2>/dev/null || true
             zip -r "${{ matrix.name }}.zip" "$STAGING"
           fi
 
