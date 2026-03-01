@@ -28,7 +28,7 @@ jobs:
             name: osx-arm64
           - os: ubuntu-24.04
             triplet: x64-linux
-            name: linux_x64
+            name: linux-x64
 
     runs-on: ${{ matrix.os }}
     steps:
